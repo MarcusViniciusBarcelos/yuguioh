@@ -9,11 +9,18 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-  final _formKey = GlobalKey<FormState>();
+  final _formKey   = GlobalKey<FormState>();
   final _nameCtrl  = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _pwdCtrl   = TextEditingController();
   bool _loading = false;
+
+  void _showSnack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(msg)));
+  }
 
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
@@ -25,16 +32,19 @@ class _SignUpPageState extends State<SignUpPage> {
         password: _pwdCtrl.text.trim(),
       );
       await cred.user?.updateDisplayName(_nameCtrl.text.trim());
-      // Usuário permanece logado; _AuthGate cuidará do push para HomeTabs.
+
+      // _AuthGate cuidará do redirecionamento.
       if (mounted) Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
       final msg = switch (e.code) {
         'email-already-in-use' => 'E-mail já cadastrado.',
-        'weak-password'        => 'Senha muito fraca.',
-        'invalid-email'        => 'E-mail inválido.',
-        _                      => 'Falha no cadastro. Tente novamente.',
+        'weak-password' => 'Senha muito fraca (mín. 6 caracteres).',
+        'invalid-email' => 'E-mail em formato inválido.',
+        'operation-not-allowed' => 'Cadastro desabilitado pelo servidor.',
+        'too-many-requests' => 'Muitas tentativas. Tente mais tarde.',
+        _ => 'Falha no cadastro. (${e.code})',
       };
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      _showSnack(msg);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -49,13 +59,14 @@ class _SignUpPageState extends State<SignUpPage> {
           padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
             child: Column(
               children: [
                 TextFormField(
                   controller: _nameCtrl,
                   decoration: const InputDecoration(labelText: 'Nome'),
                   validator: (v) =>
-                  v == null || v.isEmpty ? 'Informe o nome' : null,
+                  v == null || v.trim().isEmpty ? 'Informe o nome' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -63,14 +74,17 @@ class _SignUpPageState extends State<SignUpPage> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: const InputDecoration(labelText: 'E-mail'),
                   validator: (v) =>
-                  v == null || v.isEmpty ? 'Informe o e-mail' : null,
+                  v == null || v.trim().isEmpty
+                      ? 'Informe o e-mail'
+                      : (!v.contains('@') ? 'Formato inválido' : null),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _pwdCtrl,
                   obscureText: true,
                   decoration: const InputDecoration(labelText: 'Senha'),
-                  validator: (v) => v != null && v.length < 6
+                  validator: (v) =>
+                  v == null || v.length < 6
                       ? 'Mínimo 6 caracteres'
                       : null,
                 ),
@@ -80,7 +94,10 @@ class _SignUpPageState extends State<SignUpPage> {
                   child: ElevatedButton(
                     onPressed: _loading ? null : _signUp,
                     child: _loading
-                        ? const CircularProgressIndicator()
+                        ? const SizedBox(
+                      width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                         : const Text('Cadastrar'),
                   ),
                 ),
@@ -90,5 +107,13 @@ class _SignUpPageState extends State<SignUpPage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _pwdCtrl.dispose();
+    super.dispose();
   }
 }
