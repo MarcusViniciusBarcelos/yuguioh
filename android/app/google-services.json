@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "914314704273",
+    "project_id": "yuguioh",
+    "storage_bucket": "yuguioh.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:914314704273:android:9c15fa6f38aa4a23939630",
+        "android_client_info": {
+          "package_name": "com.example.ap2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC36bNzitq9AS-WWqy8ufCYcdyi_LO9CCw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
