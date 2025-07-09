@@ -1,36 +1,38 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'signup_screen.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class SignUpPage extends StatefulWidget {
+  const SignUpPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
+  final _nameCtrl  = TextEditingController();
   final _emailCtrl = TextEditingController();
-  final _pwdCtrl = TextEditingController();
+  final _pwdCtrl   = TextEditingController();
   bool _loading = false;
 
-  Future<void> _login() async {
+  Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _loading = true);
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailCtrl.text.trim(),
         password: _pwdCtrl.text.trim(),
       );
-      // FirebaseAuth Stream em main.dart cuidará do redirecionamento.
+      await cred.user?.updateDisplayName(_nameCtrl.text.trim());
+      // Usuário permanece logado; _AuthGate cuidará do push para HomeTabs.
+      if (mounted) Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
       final msg = switch (e.code) {
-        'user-not-found'=> 'Usuário não encontrado.',
-        'wrong-password'=> 'Senha incorreta.',
-        'invalid-email'=> 'E-mail inválido.',
-        _=> 'Falha no login. Tente novamente.',
+        'email-already-in-use' => 'E-mail já cadastrado.',
+        'weak-password'        => 'Senha muito fraca.',
+        'invalid-email'        => 'E-mail inválido.',
+        _                      => 'Falha no cadastro. Tente novamente.',
       };
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } finally {
@@ -41,7 +43,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
+      appBar: AppBar(title: const Text('Cadastro')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -49,7 +51,13 @@ class _LoginPageState extends State<LoginPage> {
             key: _formKey,
             child: Column(
               children: [
-                // E-mail
+                TextFormField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Nome'),
+                  validator: (v) =>
+                  v == null || v.isEmpty ? 'Informe o nome' : null,
+                ),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
@@ -58,31 +66,23 @@ class _LoginPageState extends State<LoginPage> {
                   v == null || v.isEmpty ? 'Informe o e-mail' : null,
                 ),
                 const SizedBox(height: 16),
-                // Senha
                 TextFormField(
                   controller: _pwdCtrl,
                   obscureText: true,
                   decoration: const InputDecoration(labelText: 'Senha'),
-                  validator: (v) =>
-                  v == null || v.isEmpty ? 'Informe a senha' : null,
+                  validator: (v) => v != null && v.length < 6
+                      ? 'Mínimo 6 caracteres'
+                      : null,
                 ),
                 const SizedBox(height: 32),
-                // Botão Login
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _loading ? null : _login,
-                    child:
-                    _loading ? const CircularProgressIndicator() : const Text('Entrar'),
+                    onPressed: _loading ? null : _signUp,
+                    child: _loading
+                        ? const CircularProgressIndicator()
+                        : const Text('Cadastrar'),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SignUpPage()),
-                  ),
-                  child: const Text('Registre-se'),
                 ),
               ],
             ),
